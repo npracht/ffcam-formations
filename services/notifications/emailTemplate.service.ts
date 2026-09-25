@@ -161,51 +161,64 @@ export class EmailTemplateRenderer {
       `;
     }
   
-    private formatDate(dateString: string): string {
-      // Gérer les cas d'erreur
-      if (!dateString || dateString.trim() === '') {
-        return 'Date non spécifiée';
+    // Les dates de formation sont des dates calendaires (colonne @db.Date) sérialisées
+    // en ISO à minuit UTC : on les formate en UTC pour ne jamais glisser d'un jour,
+    // quel que soit le fuseau du serveur qui envoie l'email.
+    private static readonly MONTH = new Intl.DateTimeFormat('fr-FR', {
+      month: 'long', timeZone: 'UTC',
+    });
+
+    // « 1er mars », « 14 mars » (usage typographique français pour le premier du mois)
+    private formatDay(date: Date): string {
+      const day = date.getUTCDate();
+      return day === 1 ? '1er' : String(day);
+    }
+
+    private formatDayMonth(date: Date): string {
+      return `${this.formatDay(date)} ${EmailTemplateRenderer.MONTH.format(date)}`;
+    }
+
+    private formatDayMonthYear(date: Date): string {
+      return `${this.formatDayMonth(date)} ${date.getUTCFullYear()}`;
+    }
+
+    private parseDate(dateString: string): Date | null {
+      if (!dateString || dateString.trim() === '') return null;
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        logger.warn('Date de formation invalide dans une notification', { dateString });
+        return null;
       }
-      
-      try {
-        const date = new Date(dateString);
-        
-        // Vérifier si la date est valide
-        if (isNaN(date.getTime())) {
-          return 'Date invalide';
-        }
-        
-        // Formater la date en français
-        return date.toLocaleDateString('fr-FR');
-      } catch (error) {
-        logger.error('Erreur lors du formatage de la date', error as Error, { dateString });
-        return 'Date invalide';
-      }
+      return date;
     }
 
     private formatDateRange(dates: string[]): string {
-      if (!dates || dates.length === 0) return "Dates non spécifiées";
-      
-      // Filtrer les dates vides ou invalides
-      const validDates = dates.filter(date => {
-        if (!date || date.trim() === '') return false;
-        try {
-          const parsedDate = new Date(date);
-          return !isNaN(parsedDate.getTime());
-        } catch {
-          return false;
-        }
-      });
-      
-      if (validDates.length === 0) return "Dates non spécifiées";
-      
-      // Trier les dates dans l'ordre chronologique
-      const sortedDates = [...validDates].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-      
-      if (sortedDates.length === 1) {
-        return this.formatDate(sortedDates[0]);
+      const validDates = (dates ?? [])
+        .map(date => this.parseDate(date))
+        .filter((date): date is Date => date !== null)
+        .sort((a, b) => a.getTime() - b.getTime());
+
+      if (validDates.length === 0) return 'Dates non spécifiées';
+
+      const first = validDates[0];
+      const last = validDates[validDates.length - 1];
+      // Une seule date (ou plusieurs le même jour) : « 14 mars 2025 »
+      if (first.getTime() === last.getTime()) {
+        return this.formatDayMonthYear(first);
       }
 
-      return `du ${this.formatDate(sortedDates[0])} au ${this.formatDate(sortedDates[sortedDates.length - 1])}`;
+      const sameYear = first.getUTCFullYear() === last.getUTCFullYear();
+      const sameMonth = sameYear && first.getUTCMonth() === last.getUTCMonth();
+
+      // « du 14 au 16 mars 2025 »
+      if (sameMonth) {
+        return `du ${this.formatDay(first)} au ${this.formatDayMonthYear(last)}`;
+      }
+      // « du 28 février au 2 mars 2025 »
+      if (sameYear) {
+        return `du ${this.formatDayMonth(first)} au ${this.formatDayMonthYear(last)}`;
+      }
+      // « du 30 décembre 2025 au 2 janvier 2026 »
+      return `du ${this.formatDayMonthYear(first)} au ${this.formatDayMonthYear(last)}`;
     }
   }
