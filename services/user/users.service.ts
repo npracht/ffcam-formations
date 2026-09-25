@@ -13,9 +13,26 @@ export class UserService {
         }
     }
 
-    async updateNotificationPreferences(userId: string, email: string, disciplines: string[]): Promise<void> {
+    async getNotificationSettings(userId: string): Promise<{ disciplines: string[]; niveaux: string[] }> {
         try {
-            const userPref = await this.userRepository.upsertUserPreferences(userId, email);
+            const [disciplines, niveaux] = await Promise.all([
+                this.userRepository.findNotificationPreferences(userId),
+                this.userRepository.findNotificationNiveaux(userId)
+            ]);
+            return { disciplines, niveaux };
+        } catch (error) {
+            logger.error('Error getting user notification settings', error as Error, { userId });
+            throw error;
+        }
+    }
+
+    /**
+     * @param niveaux niveaux de stage à suivre ([] = tous) ;
+     *                non fourni = conserve les niveaux déjà enregistrés.
+     */
+    async updateNotificationPreferences(userId: string, email: string, disciplines: string[], niveaux?: string[]): Promise<void> {
+        try {
+            const userPref = await this.userRepository.upsertUserPreferences(userId, email, niveaux);
             await this.userRepository.deleteNotificationPreferences(userPref.id);
 
             if (disciplines.length > 0) {
@@ -30,7 +47,7 @@ export class UserService {
                 );
             }
         } catch (error) {
-            logger.error('Error updating user preferences', error as Error, { userId, email, disciplines });
+            logger.error('Error updating user preferences', error as Error, { userId, email, disciplines, niveaux });
             throw error;
         }
     }
@@ -54,12 +71,13 @@ export class UserService {
         }
     }
 
-    async getUsersToNotifyForDiscipline(discipline: string): Promise<Array<{userId: string, email: string}>> {
+    async getUsersToNotifyForDiscipline(discipline: string): Promise<Array<{userId: string, email: string, niveaux: string[]}>> {
         try {
             const users = await this.userRepository.findUsersToNotify(discipline);
             return users.map(user => ({
                 userId: user.user_id,
-                email: user.email
+                email: user.email,
+                niveaux: user.niveaux ?? []
             }));
         } catch (error) {
             logger.error('Error getting users to notify', error as Error, { discipline });

@@ -2,6 +2,7 @@ import { NotificationRepository } from "@/repositories/NotificationRepository";
 import { Formation } from "@/types/formation";
 import { UserService } from "@/services/user/users.service";
 import { UserRepository } from "@/repositories/UserRepository";
+import { filterFormationsByNiveaux } from "@/lib/niveaux";
 import {
   filterRecentFormations,
   shouldNotifyBasedOnTime,
@@ -68,12 +69,16 @@ export interface UserNotificationData {
 
       const usersToNotify = await this.actualUserService.getUsersToNotifyForDiscipline(discipline);
 
-      for (const {userId, email} of usersToNotify) {
+      for (const {userId, email, niveaux} of usersToNotify) {
+        // Filtre optionnel par niveau de stage (aucun niveau = tous)
+        const formationsForUser = filterFormationsByNiveaux(recentFormations, niveaux);
+        if (formationsForUser.length === 0) continue;
+
         if (await this.shouldNotifyUser(userId, discipline)) {
           this.addFormationsForUser(
             userId,
             email,
-            recentFormations,
+            formationsForUser,
             userNotifications
           );
         }

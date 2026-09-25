@@ -2,13 +2,14 @@ import { prisma } from "@/lib/prisma";
 
 export interface IUserRepository {
     findNotificationPreferences(userId: string): Promise<string[]>;
-    upsertUserPreferences(userId: string, email: string): Promise<{ id: number }>;
+    findNotificationNiveaux(userId: string): Promise<string[]>;
+    upsertUserPreferences(userId: string, email: string, niveaux?: string[]): Promise<{ id: number }>;
     deleteNotificationPreferences(userPreferenceId: number): Promise<void>;
     findDisciplinesByNames(disciplines: string[]): Promise<Array<{ id: number; nom: string }>>;
     createNotificationPreferences(preferences: Array<{ user_preference_id: number; discipline_id: number; enabled: boolean }>): Promise<void>;
     countNotificationPreferences(userId: string, discipline: string): Promise<number>;
     updateLastNotified(userId: string, discipline: string): Promise<void>;
-    findUsersToNotify(discipline: string): Promise<Array<{ user_id: string; email: string }>>;
+    findUsersToNotify(discipline: string): Promise<Array<{ user_id: string; email: string; niveaux: string[] }>>;
 }
 
 type NotificationPreference = {
@@ -47,15 +48,26 @@ export class UserRepository implements IUserRepository {
 
     }
 
-    async upsertUserPreferences(userId: string, email: string): Promise<{ id: number }> {
+    async findNotificationNiveaux(userId: string): Promise<string[]> {
+        const preferences = await prisma.user_preferences.findUnique({
+            where: { user_id: userId },
+            select: { niveaux: true }
+        });
+        return preferences?.niveaux ?? [];
+    }
+
+    // `niveaux` absent = on ne touche pas aux niveaux déjà enregistrés
+    async upsertUserPreferences(userId: string, email: string, niveaux?: string[]): Promise<{ id: number }> {
         return await prisma.user_preferences.upsert({
             where: { user_id: userId },
             create: {
                 user_id: userId,
-                email
+                email,
+                niveaux: niveaux ?? []
             },
             update: {
                 email,
+                ...(niveaux !== undefined && { niveaux }),
                 updated_at: new Date()
             }
         });
@@ -115,8 +127,8 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findUsersToNotify(discipline: string): Promise<Array<{ user_id: string; email: string }>> {
-        return await prisma.user_preferences.findMany({
+    async findUsersToNotify(discipline: string): Promise<Array<{ user_id: string; email: string; niveaux: string[] }>> {
+        const users = await prisma.user_preferences.findMany({
             where: {
                 user_notification_preferences: {
                     some: {
@@ -137,8 +149,14 @@ export class UserRepository implements IUserRepository {
             },
             select: {
                 user_id: true,
-                email: true
+                email: true,
+                niveaux: true
             }
         });
+        // La colonne est nullable en base (liste Prisma) : on normalise en []
+        return users.map((user: { user_id: string; email: string; niveaux: string[] | null }) => ({
+            ...user,
+            niveaux: user.niveaux ?? []
+        }));
     }
 }

@@ -1,19 +1,14 @@
 import { useState, useEffect } from "react";
 import { useUrlFilters } from '@/hooks/useUrlFilters';
+import type { Filters as FiltersState } from '@/hooks/userFormationsFilter';
+import type { NiveauOption } from '@/lib/niveaux';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 type FiltersProps = {
-  onFilterChange: (filters: {
-    searchQuery: string;
-    location: string;
-    discipline: string;
-    organisateur: string;
-    startDate: string;
-    endDate: string;
-    availableOnly: boolean;
-    showPastFormations: boolean;
-  }) => void;
+  onFilterChange: (filters: FiltersState) => void;
   locations: string[];
   disciplines: string[];
+  niveaux: NiveauOption[];
   organisateurs: string[];
   showPastFormations: boolean;
 };
@@ -22,6 +17,7 @@ export default function Filters({
   onFilterChange,
   locations,
   disciplines,
+  niveaux,
   organisateurs,
   showPastFormations,
 }: FiltersProps) {
@@ -29,6 +25,7 @@ export default function Filters({
   const urlFilters = getFiltersFromUrl();
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>("");
+  const [selectedNiveaux, setSelectedNiveaux] = useState<string[]>([]);
   const [selectedOrganisateur, setSelectedOrganisateur] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -41,6 +38,7 @@ export default function Filters({
       searchQuery,
       location: selectedLocation,
       discipline: selectedDiscipline,
+      niveaux: selectedNiveaux,
       organisateur: selectedOrganisateur,
       startDate,
       endDate,
@@ -50,13 +48,14 @@ export default function Filters({
 
     onFilterChange(filters);
     updateUrl(filters);
-  }, [searchQuery, selectedLocation, selectedDiscipline, selectedOrganisateur, startDate, endDate, showAvailableOnly, showPast]);
+  }, [searchQuery, selectedLocation, selectedDiscipline, selectedNiveaux, selectedOrganisateur, startDate, endDate, showAvailableOnly, showPast]);
 
   // Initialiser les filtres depuis l'URL au chargement
   useEffect(() => {
     setSearchQuery(urlFilters.searchQuery);
     setSelectedLocation(urlFilters.location);
     setSelectedDiscipline(urlFilters.discipline);
+    setSelectedNiveaux(urlFilters.niveaux);
     setSelectedOrganisateur(urlFilters.organisateur);
     setStartDate(urlFilters.startDate);
     setEndDate(urlFilters.endDate);
@@ -68,6 +67,7 @@ export default function Filters({
     setSearchQuery("");
     setSelectedLocation("");
     setSelectedDiscipline("");
+    setSelectedNiveaux([]);
     setSelectedOrganisateur("");
     setStartDate("");
     setEndDate("");
@@ -142,6 +142,18 @@ export default function Filters({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <MultiSelect
+            id="niveau-select"
+            label="Niveau de stage"
+            placeholder="Tous les niveaux"
+            options={niveaux}
+            value={selectedNiveaux}
+            onChange={setSelectedNiveaux}
+            buttonClassName="px-3 sm:px-4 py-2.5 sm:py-2.5 min-h-[44px] rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+          />
         </div>
 
         <div className="flex flex-col gap-2">

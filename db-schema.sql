@@ -71,6 +71,8 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     id SERIAL PRIMARY KEY,
     user_id TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL,
+    -- Niveaux de stage à suivre (valeurs de lib/niveaux.ts) ; vide = tous les niveaux
+    niveaux TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -9,6 +9,7 @@ import { useFormationFilters, defaultFilters } from "@/hooks/userFormationsFilte
 import { FormationsHeader } from "@/components/features/formations/FormationsHeader";
 import { FormationsToolbar } from "@/components/features/formations/FormationsToolbar";
 import { ErrorDisplay } from "@/components/ui/error-display";
+import { getNiveauOptionsFromFormations } from "@/lib/niveaux";
 
 export default function Home() {
   const { formations, lastSyncDate, loading, error, retry, retryCount } = useFormations();
@@ -45,6 +46,11 @@ export default function Home() {
   const uniqueOrganisateurs = useMemo(
     () => Array.from(new Set(formations.map((f) => f.organisateur)))
       .sort((a, b) => a.localeCompare(b, 'fr')),
+    [formations]
+  );
+
+  const niveauOptions = useMemo(
+    () => getNiveauOptionsFromFormations(formations),
     [formations]
   );
 
@@ -89,6 +95,7 @@ export default function Home() {
         locations={uniqueLocations}
         disciplines={uniqueDisciplines}
         organisateurs={uniqueOrganisateurs}
+        niveaux={niveauOptions}
         showPastFormations={filters.showPastFormations}
       />
 

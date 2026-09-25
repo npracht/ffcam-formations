@@ -3,6 +3,7 @@ import { Filters } from "@/hooks/userFormationsFilter";
 import { Formation } from "@/types/formation";
 import { parseISO, isAfter } from "date-fns";
 import { logger } from "@/lib/logger";
+import { getNiveauFromReference } from "@/lib/niveaux";
 
 export function formatFilters(formations: Formation[], filters: Filters): Formation[] {
   const today = new Date();
@@ -19,6 +20,11 @@ export function formatFilters(formations: Formation[], filters: Filters): Format
 
     // Filtrer par discipline
     const matchesDiscipline = filters.discipline ? formation.discipline === filters.discipline : true;
+
+    // Filtrer par niveau de stage (déduit de la référence : initiale, certification, recyclage…)
+    const matchesNiveau = filters.niveaux?.length
+      ? filters.niveaux.includes(getNiveauFromReference(formation.reference) ?? '')
+      : true;
 
     // Filtrer par organisateur
     const matchesOrganisateur = filters.organisateur ? formation.organisateur === filters.organisateur : true;
@@ -73,6 +79,7 @@ export function formatFilters(formations: Formation[], filters: Filters): Format
       matchesSearchQuery &&
       matchesLocation &&
       matchesDiscipline &&
+      matchesNiveau &&
       matchesOrganisateur &&
       isInDateRange &&
       hasAvailablePlaces &&

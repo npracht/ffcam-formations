@@ -6,6 +6,8 @@ export type Filters = {
   searchQuery: string;
   location: string;
   discipline: string;
+  /** Niveaux de stage (voir lib/niveaux) ; vide = tous. */
+  niveaux: string[];
   organisateur: string;
   startDate: string;
   endDate: string;
@@ -17,6 +19,7 @@ export const defaultFilters: Filters = {
   searchQuery: "",
   location: "",
   discipline: "",
+  niveaux: [],
   organisateur: "",
   startDate: "",
   endDate: "",
