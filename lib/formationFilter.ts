@@ -3,6 +3,7 @@ import { Filters } from "@/hooks/userFormationsFilter";
 import { Formation } from "@/types/formation";
 import { parseISO, isAfter } from "date-fns";
 import { logger } from "@/lib/logger";
+import { getRegionCodeFromReference } from "@/lib/regions";
 
 export function formatFilters(formations: Formation[], filters: Filters): Formation[] {
   const today = new Date();
@@ -22,6 +23,11 @@ export function formatFilters(formations: Formation[], filters: Filters): Format
 
     // Filtrer par organisateur
     const matchesOrganisateur = filters.organisateur ? formation.organisateur === filters.organisateur : true;
+
+    // Filtrer par comité régional organisateur (déduit de la référence du stage)
+    const matchesComite = filters.comites?.length
+      ? filters.comites.includes(getRegionCodeFromReference(formation.reference) ?? '')
+      : true;
 
     // Filtrer par plage de dates
     const isInDateRange =
@@ -74,6 +80,7 @@ export function formatFilters(formations: Formation[], filters: Filters): Format
       matchesLocation &&
       matchesDiscipline &&
       matchesOrganisateur &&
+      matchesComite &&
       isInDateRange &&
       hasAvailablePlaces &&
       shouldShowFormation
